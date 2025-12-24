@@ -1,0 +1,3 @@
+embeddings:
+  model_name: "all-MiniLM-L6-v2"
+  device: "cpu" # Set to "cuda" for Jetson Nano GPU usage

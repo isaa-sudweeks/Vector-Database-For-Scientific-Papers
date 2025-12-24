@@ -23,6 +23,7 @@ This project ingests papers and notes (PDF + text), stores embeddings in a vecto
 ## Architecture
 Core services:
 - Qdrant: vector database (ARM64 friendly)
+- Embeddings: Dedicated microservice for vector generation (SentenceTransformers)
 - API: FastAPI backend (search, ingest, analysis endpoints)
 - Worker: ingestion + offline analysis jobs (chunking, embeddings, clustering)
 - UI: Next.js web frontend (recommended); Streamlit is the quick prototype option

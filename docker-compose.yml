@@ -19,7 +19,17 @@ services:
   #   depends_on:
   #     - api
 
+  embeddings:
+    build:
+      context: ./services/embeddings
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data/huggingface_cache:/root/.cache/huggingface
+    environment:
+      - PYTHONUNBUFFERED=1
   # worker:
   #   build: ./services/worker
   #   depends_on:
   #     - api
+  #     - embeddings
