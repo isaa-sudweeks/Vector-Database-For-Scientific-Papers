@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from contextlib import asynccontextmanager
-from models.schemas import SearchRequest, SearchResponse, DocumentResponse, LibraryMapResponse, ConnectionsResponse, GapsResponse
+from models.schemas import SearchRequest, SearchResponse, DocumentResponse, LibraryMapResponse, ConnectionsResponse, GapsResponse, DocumentMetadata, SearchResult
 from core.embedding_client import EmbeddingClient
 from core.vector_db import VectorDB
 
@@ -17,6 +17,10 @@ async def lifespan(app: FastAPI):
     # Initialize Vector DB client
     print("Connecting to Qdrant...")
     resources["vector_db"] = VectorDB(host="qdrant")
+    
+    # Ensure collection exists
+    print("Ensuring collection 'papers' exists...")
+    await resources["vector_db"].ensure_collection(collection_name="papers")
     
     yield
     # Clean up
@@ -41,9 +45,28 @@ async def search(request: SearchRequest, embedder: EmbeddingClient = Depends(get
     query_vector = await embedder.get_embedding(request.query)
     
     # 2. (Next Step) Query Qdrant with this vector
-    # 3. Formulate SearchResponse
+    # We await the search since it's async now
+    results = await resources["vector_db"].search(
+        collection_name="papers", 
+        query_vector=query_vector, 
+        limit=request.top_k
+    )
     
-    return SearchResponse(results=[])
+    # 3. Formulate SearchResponse
+    search_results = []
+    for res in results:
+        # Assuming payload structure matches DocumentMetadata
+        payload = res.payload or {}
+        metadata = DocumentMetadata(
+            title=payload.get("title", "Unknown"),
+            authors=payload.get("authors", []),
+            year=payload.get("year"),
+            abstract=payload.get("abstract"),
+            tags=payload.get("tags", [])
+        )
+        search_results.append(SearchResult(id=str(res.id), score=res.score, metadata=metadata))
+    
+    return SearchResponse(results=search_results)
 
 @app.get("/documents/{document_id}")
 async def get_document(document_id: str):

@@ -34,6 +34,7 @@ vector-research-scout/
   docker-compose.yml
   services/
     api/
+    embeddings/
     worker/
     ui/
   data/
@@ -137,6 +138,11 @@ UI notes:
 - Run on Jetson without overheating
 
 ## Status
-The initial FastAPI API service is up and running. They do not do anything yet, but the scheme are written and the API services works except the get docs endpoint which is returning a 500 error.
+## Status
+The API service and Embeddings service are up and running in Docker.
+- **API**: Running on port 8000. Search endpoint connects to the embedding service and Qdrant.
+- **Embeddings**: Running on port 8001. Loads SentenceTransformer model once.
+- **Qdrant**: Running on port 6333.
+- **Worker**: Pending implementation (will use the embedding service for ingestion).
 
-I now need to work on setting up a embedding model and a vector database. I plan to use Qdrant for the vector database and Huggingface for the embedding model.
+Next steps: Implement the Worker to ingest documents into Qdrant.
