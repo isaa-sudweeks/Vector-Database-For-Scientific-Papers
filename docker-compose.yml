@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ./services/api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./services/api:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+  # Future services placeholders
+  # ui:
+  #   build: ./services/ui
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - api
+
+  # worker:
+  #   build: ./services/worker
+  #   depends_on:
+  #     - api
