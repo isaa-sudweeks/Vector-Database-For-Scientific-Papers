@@ -136,4 +136,6 @@ UI notes:
 - Run on Jetson without overheating
 
 ## Status
-Scaffold only: folders and README. No code has been written yet.
+The initial FastAPI API service is up and running. They do not do anything yet, but the scheme are written and the API services works except the get docs endpoint which is returning a 500 error.
+
+I now need to work on setting up a embedding model and a vector database. I plan to use Qdrant for the vector database and Huggingface for the embedding model.
