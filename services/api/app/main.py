@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from contextlib import asynccontextmanager
-from models.schemas import SearchRequest, SearchResponse, DocumentResponse, LibraryMapResponse, ConnectionsResponse, GapsResponse, DocumentMetadata, SearchResult
+from models.schemas import SearchRequest, SearchResponse, DocumentResponse, LibraryMapResponse, ConnectionsResponse, GapsResponse, DocumentMetadata, SearchResult, DocumentResult
 from core.embedding_client import EmbeddingClient
 from core.vector_db import VectorDB
 
@@ -10,8 +10,6 @@ resources = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Initialize Embedding Client
-    # Note: We don't load the model here, we just instantiate the client.
-    # The actual model is in the 'embeddings' service.
     resources["embedder"] = EmbeddingClient(base_url="http://embeddings:8001")
     
     # Initialize Vector DB client
@@ -34,19 +32,46 @@ def get_embedder():
 def get_vector_db():
     return resources["vector_db"]
 
+def map_payload_to_metadata(payload: dict) -> DocumentMetadata:
+    pdf_meta = payload.get("metadata", {})
+    
+    title = (
+        payload.get("title") or 
+        pdf_meta.get("Title") or 
+        payload.get("filename") or 
+        "Unknown"
+    )
+    
+    authors_val = payload.get("authors")
+    if not authors_val:
+        author = pdf_meta.get("Author")
+        authors_val = [author] if author else []
+        
+    abstract = payload.get("abstract")
+    if not abstract and "text" in payload:
+        text = payload["text"]
+        abstract = text[:300] + "..." if len(text) > 300 else text
+
+    return DocumentMetadata(
+        title=title,
+        authors=authors_val,
+        year=payload.get("year"),
+        abstract=abstract,
+        tags=payload.get("tags", []),
+        raw_metadata=pdf_meta if pdf_meta else None
+    )
+
 @app.get("/")
 def read_root():
-    return {"Hello": "World"}
+    return {"status": "ok", "message": "Vector Search API is running"}
 
-@app.post("/search")
-async def search(request: SearchRequest, embedder: EmbeddingClient = Depends(get_embedder)):
+@app.post("/search", response_model=SearchResponse)
+async def search(request: SearchRequest, embedder: EmbeddingClient = Depends(get_embedder), vector_db: VectorDB = Depends(get_vector_db)):
     # 1. Generate embedding for the query
-    # Since this is an async client now, we await it
     query_vector = await embedder.get_embedding(request.query)
     
-    # 2. (Next Step) Query Qdrant with this vector
-    # We await the search since it's async now
-    results = await resources["vector_db"].search(
+    # 2. Query Qdrant
+    results = await vector_db.search(
         collection_name="papers", 
         query_vector=query_vector, 
         limit=request.top_k
@@ -55,22 +80,19 @@ async def search(request: SearchRequest, embedder: EmbeddingClient = Depends(get
     # 3. Formulate SearchResponse
     search_results = []
     for res in results:
-        # Assuming payload structure matches DocumentMetadata
-        payload = res.payload or {}
-        metadata = DocumentMetadata(
-            title=payload.get("title", "Unknown"),
-            authors=payload.get("authors", []),
-            year=payload.get("year"),
-            abstract=payload.get("abstract"),
-            tags=payload.get("tags", [])
-        )
+        metadata = map_payload_to_metadata(res.payload or {})
         search_results.append(SearchResult(id=str(res.id), score=res.score, metadata=metadata))
     
     return SearchResponse(results=search_results)
 
-@app.get("/documents/{document_id}")
-async def get_document(document_id: str):
-    return DocumentResponse(result=[])
+@app.get("/documents/{document_id}", response_model=DocumentResponse)
+async def get_document(document_id: str, vector_db: VectorDB = Depends(get_vector_db)):
+    res = await vector_db.get_point(collection_name="papers", point_id=document_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    metadata = map_payload_to_metadata(res.payload or {})
+    return DocumentResponse(result=DocumentResult(id=str(res.id), metadata=metadata))
 
 @app.get("/library/map")
 async def get_library_map():
@@ -83,4 +105,3 @@ async def get_connections():
 @app.get("/gaps")
 async def get_gaps():
     return GapsResponse(gaps=[])
-

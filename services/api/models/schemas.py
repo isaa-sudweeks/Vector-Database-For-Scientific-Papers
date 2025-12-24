@@ -1,14 +1,16 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 # --- Common/Shared ---
 
 class DocumentMetadata(BaseModel):
     title: str
-    authors: List[str]
+    authors: List[str] = Field(default_factory=list)
     year: Optional[int] = None
     abstract: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
+    raw_metadata: Optional[Dict[str, Any]] = None
+
 
 # --- Search API ---
 

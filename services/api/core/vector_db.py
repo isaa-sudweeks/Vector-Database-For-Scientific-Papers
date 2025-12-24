@@ -20,3 +20,10 @@ class VectorDB:
             with_payload=True
         )
         return result.points
+    async def get_point(self, collection_name: str, point_id: str):
+        result = await self.client.retrieve(
+            collection_name=collection_name,
+            ids=[point_id],
+            with_payload=True
+        )
+        return result[0] if result else None
