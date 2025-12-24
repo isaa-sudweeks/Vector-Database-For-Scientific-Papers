@@ -37,8 +37,19 @@ services:
       - ./data/huggingface_cache:/root/.cache/huggingface
     environment:
       - PYTHONUNBUFFERED=1
-  # worker:
-  #   build: ./services/worker
-  #   depends_on:
-  #     - api
-  #     - embeddings
+  worker:
+    build:
+      context: ./services/worker
+    volumes:
+      - ./data/inbox:/app/inbox
+      - ./data/processed:/app/processed
+    environment:
+      - PYTHONUNBUFFERED=1
+      - INBOX_DIR=/app/inbox
+      - PROCESSED_DIR=/app/processed
+      - EMBEDDING_SERVICE_URL=http://embeddings:8001
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+    depends_on:
+      - embeddings
+      - qdrant
