@@ -8,6 +8,8 @@ from core.pipeline import WorkerPipeline
 from core.pdf_parser import PDFParser
 from core.embedder import RemoteEmbedder
 from core.store import QdrantStore
+from core.chunker import RecursiveCharacterTextSplitter
+import yaml
 
 # Config
 INBOX_DIR = os.getenv("INBOX_DIR", "/app/inbox")
@@ -28,12 +30,26 @@ def main():
         print(f"Creating processed directory: {PROCESSED_DIR}")
         os.makedirs(PROCESSED_DIR, exist_ok=True)
 
+    # Load Config
+    try:
+        with open("/app/config.yaml", "r") as f:
+            config = yaml.safe_load(f)
+            chunking_config = config.get("chunking", {})
+            chunk_size = chunking_config.get("chunk_size", 1000)
+            chunk_overlap = chunking_config.get("chunk_overlap", 200)
+            print(f"Loaded config: chunk_size={chunk_size}, chunk_overlap={chunk_overlap}")
+    except FileNotFoundError:
+        print("Config file not found, using defaults.")
+        chunk_size = 1000
+        chunk_overlap = 200
+
     # Initialize Components
     parser = PDFParser()
     embedder = RemoteEmbedder(EMBEDDING_SERVICE_URL)
     store = QdrantStore(QDRANT_HOST, QDRANT_PORT)
+    chunker = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     
-    pipeline = WorkerPipeline(parser, embedder, store, processed_dir=PROCESSED_DIR)
+    pipeline = WorkerPipeline(parser, embedder, store, chunker, processed_dir=PROCESSED_DIR)
     event_handler = PDFEventHandler(pipeline)
     
     observer = Observer()

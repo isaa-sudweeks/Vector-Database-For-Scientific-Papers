@@ -43,6 +43,7 @@ services:
     volumes:
       - ./data/inbox:/app/inbox
       - ./data/processed:/app/processed
+      - ./config.yaml:/app/config.yaml
     environment:
       - PYTHONUNBUFFERED=1
       - INBOX_DIR=/app/inbox

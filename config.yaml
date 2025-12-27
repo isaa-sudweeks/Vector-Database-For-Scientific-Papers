@@ -1,3 +1,7 @@
 embeddings:
-  model_name: "all-MiniLM-L6-v2"
+  model_name: "ibm-granite/granite-embedding-30m-english"
   device: "cpu" # Set to "cuda" for Jetson Nano GPU usage
+
+chunking:
+  chunk_size: 1000
+  chunk_overlap: 200
